@@ -6,19 +6,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 $user_id = $_SESSION['user_id'];
-$query = "SELECT remaining_quota FROM users WHERE id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-if ($result->num_rows > 0) {
-    $row = $result->fetch_assoc();
-    $remaining_quota = $row['remaining_quota'];
-} else {
-    echo "Error fetching quota: " . $conn->error; 
-    exit;
-}
-$username = isset($_SESSION['username']) ? $_SESSION['username'] : 'John'; 
+$remaining_quota = $_SESSION['remaining_quota'];
+$username = $_SESSION['username'];
+$admin_username = $_SESSION['admin_username'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -26,93 +16,160 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'John';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Derguesi I Mesazheve Anonim</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Poppins', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            background-color: #f8f9fa;
         }
         .container {
             max-width: 100%;
-            height: 100vh;
+            min-height: 100vh;
             margin: auto;
-            padding: 60px 20px 20px;
-            background-color: #fff;
+            padding: 60px 20px 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
         }
         .container h2 {
             margin-bottom: 20px;
             text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
         .form-group {
             margin-bottom: 20px;
         }
         .form-group label {
             display: block;
-            font-weight: bold;
+            font-weight: 500;
+            margin-bottom: 5px;
         }
         .form-group input[type="tel"],
         .form-group textarea {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
+            padding: 12px;
+            border: none;
             border-radius: 5px;
             box-sizing: border-box;
+            background-color: rgba(255, 255, 255, 0.9);
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            color: #333;
         }
         .form-group textarea {
-            height: 100px;
+            height: 120px;
         }
         .form-group button {
             width: 100%;
-            padding: 10px;
-            background-color: #007bff;
-            color: #fff;
+            padding: 12px;
+            background-color: #fff;
+            color: #764ba2;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
         }
         .form-group button:hover {
-            background-color: #0056b3;
+            background-color: #f1f1f1;
         }
         .logout-button {
             position: absolute;
             top: 20px;
             left: 20px;
-            background-color: #dc3545;
-            color: white;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
             border: none;
             border-radius: 5px;
-            padding: 8px 16px;
+            padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
+            transition: background-color 0.3s ease;
         }
         .logout-button:hover {
-            background-color: #c82333;
+            background-color: rgba(255, 255, 255, 0.3);
         }
         .error-msg {
-            color: #ff0000;
+            color: #ff4d4d;
             font-size: 14px;
             margin-top: 10px;
             text-align: center;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
         .user-greet {
             margin-top: 10px;
             text-align: center;
-            font-size: 16px;
+            font-size: 20px;
+            font-weight: 500;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
         .quota-info {
             margin-top: 10px;
             text-align: center;
-            font-size: 14px;
+            font-size: 16px;
+            font-weight: 400;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
         .warning-msg {
             margin-bottom: 20px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 300;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
         .form-container {
             margin-top: 40px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .admin-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 16px;
+            font-weight: 400;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .buy-credits {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .buy-credits button {
+            background-color: #fff;
+            color: #764ba2;
+            border: none;
+            border-radius: 5px;
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .buy-credits button:hover {
+            background-color: #f1f1f1;
+        }
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -126,14 +183,19 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'John';
                     url: 'send_message.php',
                     data: formData,
                     success: function(response){
+                        console.log('AJAX Response: ' + response); // Debug statement
                         if (response.startsWith('Error:')) {
                             $('.error-msg').html(response);
                         } else if (response.startsWith('success')) {
                             var remainingQuota = response.split(':')[1];
                             $('.error-msg').html('');
+                            $('.quota-info strong').text(remainingQuota); // Update remaining quota value
                             alert('Mesazhi U Dergua Me Sukses! Mesazhe Te Mbetura: ' + remainingQuota);
-                            location.reload(); // Reload the page
+                            $('#contact-form')[0].reset(); // Reset the form
                         }
+                    },
+                    error: function(xhr, status, error) {
+                        console.log('AJAX Error: ' + error); // Debug statement
                     }
                 });
             });
@@ -146,27 +208,34 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'John';
             <form action="logout.php" method="post">
                 <button type="submit" class="logout-button">Dil</button>
             </form>
-            <div class="user-greet">Mireseerdhe: <strong><?php echo $username; ?></strong></div>
-            <div class="quota-info">Mesazhe Te Mbetura: <strong><?php echo $remaining_quota; ?></strong></div>
+            <div class="admin-info">Registered By: <strong><?php echo $admin_username; ?></strong></div>
+<div class="user-greet">Mirësevini: <strong><?php echo ucfirst($username); ?></strong></div>
+            <div class="quota-info">Mesazhe Të Mbetura: <strong><?php echo $remaining_quota; ?></strong></div>
             <h2>Mesazh Anonim</h2>
-            <p class="warning-msg">Shenim : Ky tool mund te dergoj mesazhe ne cdo numer ne cdo shtet dhe mesazhet e derguara jane 100% anonim dhe te pagjurmueshme. Perdorim te kendshem :)</p>
+            <p class="warning-msg">Shënim: Ky mjet mund të dërgojë mesazhe në çdo numër në çdo shtet dhe mesazhet e dërguara janë 100% anonime dhe të pagjurmueshme. Përdorim të këndshëm :)</p>
             <div class="error-msg"></div>
         </div>
         <div class="form-container">
             <form id="contact-form" method="post">
                 <div class="form-group">
-                    <label for="phone">Numri Telefonit:</label>
-                    <input type="tel" id="phone" name="phone" placeholder="Sheno Numrin E Telefonit" required>
+                    <label for="phone">Numri i Telefonit:</label>
+                    <input type="tel" id="phone" name="phone" placeholder="Shkruani Numrin e Telefonit" required>
                 </div>
                 <div class="form-group">
                     <label for="message">Mesazhi:</label>
-                    <textarea id="message" name="message" placeholder="Sheno Mesazhin" required></textarea>
+                    <textarea id="message" name="message" placeholder="Shkruani Mesazhin" required></textarea>
                 </div>
                 <div class="form-group">
-                    <button type="submit">Dergo</button>
+                    <button type="submit">Dërgo</button>
                 </div>
             </form>
         </div>
+        <div class="buy-credits">
+            <button>Bli Më Shumë Kredite</button>
+        </div>
+    </div>
+</body>
+</html>
     </div>
 </body>
 </html>
